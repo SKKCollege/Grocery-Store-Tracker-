@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Latvia Grocery Price Tracker</title>
+  <style>
+    :root {
+      --bg: #f7f6f2;
+      --surface: #ffffff;
+      --surface2: #f0ede8;
+      --border: #e2ddd8;
+      --text: #1a1816;
+      --muted: #6b6560;
+      --hint: #a09b96;
+      --green: #2e7d32;
+      --green-bg: #e8f5e9;
+      --red: #c62828;
+      --radius: 10px;
+      --radius-lg: 14px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1816; --surface: #242220; --surface2: #2e2c2a;
+        --border: #3a3835; --text: #f0ede8; --muted: #9e9993;
+        --hint: #6b6560; --green: #66bb6a; --green-bg: #1b3a1e;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 1.5rem; position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .logo { font-size: 18px; font-weight: 600; }
+    .logo span { color: var(--green); }
+    .last-update { font-size: 12px; color: var(--hint); }
+
+    .layout { display: grid; grid-template-columns: 240px 1fr; gap: 0; min-height: calc(100vh - 57px); }
+    aside { background: var(--surface); border-right: 1px solid var(--border); padding: 1.25rem; position: sticky; top: 57px; height: calc(100vh - 57px); overflow-y: auto; }
+    main { padding: 1.25rem; overflow-y: auto; }
+
+    .aside-section { margin-bottom: 1.5rem; }
+    .aside-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--hint); margin-bottom: 8px; font-weight: 600; }
+
+    .cat-btn { display: block; width: 100%; text-align: left; padding: 7px 10px; border-radius: 7px; border: none; background: transparent; cursor: pointer; font-size: 14px; color: var(--muted); transition: all 0.12s; }
+    .cat-btn:hover { background: var(--surface2); color: var(--text); }
+    .cat-btn.active { background: var(--text); color: var(--bg); font-weight: 500; }
+    .cat-count { float: right; font-size: 11px; opacity: 0.5; }
+
+    .store-chip { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: transparent; cursor: pointer; font-size: 13px; margin-bottom: 5px; width: 100%; transition: all 0.12s; color: var(--text); }
+    .store-chip .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .store-chip.off { opacity: 0.35; }
+    .store-chip:hover { border-color: var(--muted); }
+
+    .search-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+    .search-row input { flex: 1; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--surface); color: var(--text); outline: none; }
+    .search-row input:focus { border-color: var(--muted); }
+    .sort-row { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+    .sort-row select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--surface); color: var(--text); cursor: pointer; }
+    .result-count { font-size: 13px; color: var(--muted); margin-left: auto; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+    .stat-card .label { font-size: 11px; color: var(--hint); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .stat-card .value { font-size: 22px; font-weight: 600; }
+    .stat-card .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .product-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 10px; transition: box-shadow 0.15s; }
+    .product-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    .product-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 10px; }
+    .product-title { font-size: 15px; font-weight: 600; }
+    .product-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .savings-tag { font-size: 12px; padding: 3px 9px; background: var(--green-bg); color: var(--green); border-radius: 20px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+
+    .price-rows { display: flex; flex-direction: column; gap: 5px; }
+    .price-row-item { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border-radius: 7px; background: var(--surface2); }
+    .price-row-item.best { background: var(--green-bg); }
+    .store-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .store-lbl { font-size: 13px; color: var(--muted); min-width: 60px; }
+    .price-row-item.best .store-lbl { color: var(--green); font-weight: 600; }
+    .bar-wrap { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 2px; }
+    .price-row-item.best .bar-wrap { background: rgba(46,125,50,0.18); }
+    .price-num { font-size: 14px; font-weight: 600; min-width: 54px; text-align: right; }
+    .price-row-item.best .price-num { color: var(--green); }
+    .na { color: var(--hint); font-size: 13px; }
+
+    .status-bar { padding: 8px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 1rem; }
+    .status-bar.loading { background: #e3f2fd; color: #1565c0; }
+    .status-bar.error { background: #ffebee; color: var(--red); }
+    .status-bar.live { background: var(--green-bg); color: var(--green); }
+
+    .empty { text-align: center; padding: 4rem; color: var(--muted); font-size: 14px; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .api-badge { font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+    .api-badge.live { background: var(--green-bg); color: var(--green); }
+    .api-badge.demo { background: #fff3e0; color: #e65100; }
+
+    @media (max-width: 640px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🛒 Latvia <span>Grocery</span> Prices</div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span id="apiStatus" class="api-badge demo">demo data</span>
+    <span class="last-update" id="lastUpdate">Loading...</span>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside>
+    <div class="aside-section">
+      <div class="aside-label">Categories</div>
+      <div id="categoryList"></div>
+    </div>
+    <div class="aside-section">
+      <div class="aside-label">Stores</div>
+      <div id="storeList"></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main>
+    <div id="statusBar" class="status-bar loading">
+      <span class="spinner"></span> Connecting to API...
+    </div>
+
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <div class="search-row">
+      <input type="text" id="searchInput" placeholder="Search products..." oninput="applyFilters()" />
+    </div>
+    <div class="sort-row">
+      <select id="sortSelect" onchange="applyFilters()">
+        <option value="name">Sort: A → Z</option>
+        <option value="savings">Sort: biggest savings</option>
+        <option value="price_asc">Sort: lowest price first</option>
+        <option value="price_desc">Sort: highest price first</option>
+      </select>
+      <span class="result-count" id="resultCount"></span>
+    </div>
+
+    <div id="productList"></div>
+  </main>
+</div>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const API_BASE = "http://localhost:8000";   // ← change to your deployed API URL
+
+const STORE_COLORS = {
+  rimi: "#e63329", maxima: "#f9a825", mego: "#0066cc",
+  elvi: "#ff6600", lidl: "#0050aa", lats: "#2e7d32", top: "#7b1fa2",
+};
+
+// Fallback demo data used when API is unreachable
+const DEMO_PRODUCTS = [
+  { name:"Whole milk 1L", unit:"1L", category:"dairy", image_url:null,
+    prices:[{store:"rimi",price:0.99},{store:"maxima",price:0.89},{store:"lidl",price:0.79},{store:"mego",price:0.95},{store:"elvi",price:0.92},{store:"lats",price:0.98},{store:"top",price:1.05}],
+    best_store:"lidl", best_price:0.79, worst_price:1.05, savings:0.26},
+  { name:"White bread 700g", unit:"700g", category:"bakery", image_url:null,
+    prices:[{store:"rimi",price:1.29},{store:"maxima",price:1.19},{store:"lidl",price:0.99},{store:"mego",price:1.25},{store:"lats",price:1.35},{store:"top",price:1.45}],
+    best_store:"lidl", best_price:0.99, worst_price:1.45, savings:0.46},
+  { name:"Chicken breast 1kg", unit:"1kg", category:"meat", image_url:null,
+    prices:[{store:"rimi",price:4.99},{store:"maxima",price:4.49},{store:"lidl",price:3.99},{store:"mego",price:4.79},{store:"elvi",price:5.20},{store:"lats",price:5.10},{store:"top",price:5.49}],
+    best_store:"lidl", best_price:3.99, worst_price:5.49, savings:1.50},
+  { name:"Eggs ×10", unit:"×10", category:"dairy", image_url:null,
+    prices:[{store:"rimi",price:1.89},{store:"maxima",price:1.69},{store:"lidl",price:1.49},{store:"mego",price:1.79},{store:"elvi",price:1.95},{store:"lats",price:1.99},{store:"top",price:2.10}],
+    best_store:"lidl", best_price:1.49, worst_price:2.10, savings:0.61},
+  { name:"Butter 200g", unit:"200g", category:"dairy", image_url:null,
+    prices:[{store:"rimi",price:1.59},{store:"maxima",price:1.45},{store:"lidl",price:1.29},{store:"mego",price:1.55},{store:"elvi",price:1.62},{store:"lats",price:1.69},{store:"top",price:1.79}],
+    best_store:"lidl", best_price:1.29, worst_price:1.79, savings:0.50},
+  { name:"Pasta 500g", unit:"500g", category:"pantry", image_url:null,
+    prices:[{store:"rimi",price:0.79},{store:"maxima",price:0.69},{store:"lidl",price:0.55},{store:"mego",price:0.75},{store:"elvi",price:0.82},{store:"lats",price:0.89},{store:"top",price:0.95}],
+    best_store:"lidl", best_price:0.55, worst_price:0.95, savings:0.40},
+  { name:"Tomatoes 1kg", unit:"1kg", category:"produce", image_url:null,
+    prices:[{store:"rimi",price:2.49},{store:"maxima",price:2.19},{store:"lidl",price:1.99},{store:"mego",price:2.35},{store:"elvi",price:2.55},{store:"lats",price:2.65},{store:"top",price:2.79}],
+    best_store:"lidl", best_price:1.99, worst_price:2.79, savings:0.80},
+  { name:"Potatoes 2kg", unit:"2kg", category:"produce", image_url:null,
+    prices:[{store:"rimi",price:1.49},{store:"maxima",price:1.29},{store:"lidl",price:0.99},{store:"mego",price:1.39},{store:"elvi",price:1.55},{store:"lats",price:1.59},{store:"top",price:1.69}],
+    best_store:"lidl", best_price:0.99, worst_price:1.69, savings:0.70},
+  { name:"Orange juice 1L", unit:"1L", category:"drinks", image_url:null,
+    prices:[{store:"rimi",price:1.89},{store:"maxima",price:1.65},{store:"lidl",price:1.49},{store:"mego",price:1.79},{store:"elvi",price:1.95},{store:"lats",price:1.99},{store:"top",price:2.09}],
+    best_store:"lidl", best_price:1.49, worst_price:2.09, savings:0.60},
+  { name:"Coffee ground 250g", unit:"250g", category:"pantry", image_url:null,
+    prices:[{store:"rimi",price:3.49},{store:"maxima",price:2.99},{store:"lidl",price:2.69},{store:"mego",price:3.25},{store:"elvi",price:3.59},{store:"lats",price:3.69},{store:"top",price:3.99}],
+    best_store:"lidl", best_price:2.69, worst_price:3.99, savings:1.30},
+];
+
+// ── State ──────────────────────────────────────────────────────────────────
+let allProducts = [];
+let categories = {};
+let activeCategory = "all";
+let activeStores = new Set(Object.keys(STORE_COLORS));
+let isLive = false;
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+async function boot() {
+  try {
+    const [status, products] = await Promise.all([
+      fetch(`${API_BASE}/`).then(r => r.json()),
+      fetch(`${API_BASE}/products?limit=200`).then(r => r.json()),
+    ]);
+    allProducts = products;
+    isLive = true;
+    document.getElementById("apiStatus").textContent = "live data";
+    document.getElementById("apiStatus").className = "api-badge live";
+    document.getElementById("lastUpdate").textContent =
+      "Updated: " + new Date(status.last_scrape).toLocaleString("lv-LV");
+    document.getElementById("statusBar").className = "status-bar live";
+    document.getElementById("statusBar").innerHTML = "✓ Connected to live API — prices are real and fresh";
+  } catch {
+    allProducts = DEMO_PRODUCTS;
+    document.getElementById("apiStatus").textContent = "demo data";
+    document.getElementById("statusBar").className = "status-bar error";
+    document.getElementById("statusBar").innerHTML =
+      "⚠ API not reachable — showing demo data. Start the FastAPI server: <code>uvicorn main:app --reload</code>";
+    document.getElementById("lastUpdate").textContent = "Demo mode";
+  }
+
+  buildCategories();
+  buildStoreList();
+  renderStats();
+  applyFilters();
+}
+
+// ── Build sidebar ──────────────────────────────────────────────────────────
+function buildCategories() {
+  categories = { all: allProducts.length };
+  allProducts.forEach(p => {
+    categories[p.category] = (categories[p.category] || 0) + 1;
+  });
+  const el = document.getElementById("categoryList");
+  el.innerHTML = Object.entries(categories).map(([cat, count]) => `
+    <button class="cat-btn ${activeCategory === cat ? 'active' : ''}"
+      onclick="setCategory('${cat}')">
+      ${cat === "all" ? "All products" : cat.charAt(0).toUpperCase() + cat.slice(1)}
+      <span class="cat-count">${count}</span>
+    </button>`).join("");
+}
+
+function buildStoreList() {
+  const stores = [...new Set(allProducts.flatMap(p => p.prices.map(pr => pr.store)))];
+  const el = document.getElementById("storeList");
+  el.innerHTML = stores.map(s => `
+    <button class="store-chip ${activeStores.has(s) ? '' : 'off'}" onclick="toggleStore('${s}')">
+      <span class="dot" style="background:${STORE_COLORS[s] || '#888'}"></span>
+      ${s.charAt(0).toUpperCase() + s.slice(1)}
+    </button>`).join("");
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+function renderStats() {
+  const visible = getFiltered();
+  const totalSavings = visible.reduce((a, p) => a + p.savings, 0);
+  const wins = {};
+  visible.forEach(p => { wins[p.best_store] = (wins[p.best_store] || 0) + 1; });
+  const topStore = Object.entries(wins).sort((a,b) => b[1]-a[1])[0];
+  const el = document.getElementById("statsGrid");
+  el.innerHTML = `
+    <div class="stat-card"><div class="label">Products</div><div class="value">${visible.length}</div><div class="sub">across ${activeStores.size} stores</div></div>
+    <div class="stat-card"><div class="label">Total savings available</div><div class="value" style="color:var(--green)">€${totalSavings.toFixed(2)}</div><div class="sub">vs always buying priciest</div></div>
+    <div class="stat-card"><div class="label">Avg saving / item</div><div class="value">€${visible.length ? (totalSavings/visible.length).toFixed(2) : '0.00'}</div><div class="sub">choosing cheapest store</div></div>
+    <div class="stat-card"><div class="label">Cheapest store</div>
+      <div class="value" style="color:${STORE_COLORS[topStore?.[0]] || 'var(--text)'}">${topStore ? topStore[0].charAt(0).toUpperCase()+topStore[0].slice(1) : '—'}</div>
+      <div class="sub">wins on most items</div></div>`;
+}
+
+// ── Filters ────────────────────────────────────────────────────────────────
+function getFiltered() {
+  const q = document.getElementById("searchInput")?.value.toLowerCase() || "";
+  return allProducts.filter(p => {
+    const catOk = activeCategory === "all" || p.category === activeCategory;
+    const searchOk = !q || p.name.toLowerCase().includes(q);
+    const hasStore = p.prices.some(pr => activeStores.has(pr.store));
+    return catOk && searchOk && hasStore;
+  });
+}
+
+function applyFilters() {
+  renderStats();
+  const sort = document.getElementById("sortSelect")?.value || "name";
+  let products = getFiltered();
+  if (sort === "savings") products.sort((a, b) => b.savings - a.savings);
+  else if (sort === "price_asc") products.sort((a, b) => a.best_price - b.best_price);
+  else if (sort === "price_desc") products.sort((a, b) => b.best_price - a.best_price);
+  else products.sort((a, b) => a.name.localeCompare(b.name));
+
+  document.getElementById("resultCount").textContent = `${products.length} result${products.length !== 1 ? "s" : ""}`;
+  renderProducts(products);
+}
+
+// ── Render products ────────────────────────────────────────────────────────
+function renderProducts(products) {
+  const el = document.getElementById("productList");
+  if (!products.length) {
+    el.innerHTML = '<div class="empty">No products match — try a different search or category.</div>';
+    return;
+  }
+  el.innerHTML = products.map(p => {
+    const visiblePrices = p.prices.filter(pr => activeStores.has(pr.store));
+    if (!visiblePrices.length) return "";
+    const maxP = Math.max(...visiblePrices.map(pr => pr.price));
+    const bestP = Math.min(...visiblePrices.map(pr => pr.price));
+
+    const rows = visiblePrices.map(pr => {
+      const isBest = pr.price === bestP;
+      const barW = Math.round((pr.price / maxP) * 100);
+      const color = STORE_COLORS[pr.store] || "#888";
+      return `<div class="price-row-item ${isBest ? "best" : ""}">
+        <span class="store-dot" style="background:${color}"></span>
+        <span class="store-lbl">${pr.store.charAt(0).toUpperCase()+pr.store.slice(1)}${isBest?" ★":""}</span>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${barW}%;background:${isBest?"var(--green)":color+'99'}"></div></div>
+        <span class="price-num">€${pr.price.toFixed(2)}</span>
+      </div>`;
+    }).join("");
+
+    const savings = (maxP - bestP).toFixed(2);
+    return `<div class="product-card">
+      <div class="product-head">
+        <div>
+          <div class="product-title">${p.name}</div>
+          <div class="product-sub">${p.unit} · best: <strong style="color:${STORE_COLORS[p.best_store]||'var(--green)'}">${p.best_store.charAt(0).toUpperCase()+p.best_store.slice(1)} — €${bestP.toFixed(2)}</strong></div>
+        </div>
+        ${parseFloat(savings) > 0.01 ? `<span class="savings-tag">save €${savings}</span>` : ""}
+      </div>
+      <div class="price-rows">${rows}</div>
+    </div>`;
+  }).join("");
+}
+
+// ── Interaction ────────────────────────────────────────────────────────────
+function setCategory(cat) {
+  activeCategory = cat;
+  buildCategories();
+  applyFilters();
+}
+
+function toggleStore(s) {
+  if (activeStores.has(s) && activeStores.size > 2) activeStores.delete(s);
+  else if (!activeStores.has(s)) activeStores.add(s);
+  buildStoreList();
+  applyFilters();
+}
+
+boot();
+</script>
+</body>
+</html>
